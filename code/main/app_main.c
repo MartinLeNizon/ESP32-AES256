@@ -2,6 +2,10 @@
 Lim. 10 s for the 3 frames when signed
 -----------------------------------------------*/
 
+/* -------------- TO-DO ----------------
+Decomposition & composition of the frame inside methods
+--------------------------------------*/
+
 // CSTDLIB includes.
 #include <stdio.h>
 #include <string.h>
@@ -17,8 +21,8 @@ Lim. 10 s for the 3 frames when signed
 #include "serial_io.h"
 #include "utility.h"
 
-#include "app_chat.c"
-#include "app_ping.c"
+#include "app_chat.h"
+#include "app_ping.h"
 
 const char* ERROR_OVERRUN = "ERROR // INPUT OVERRUN";
 const char* ERROR_UNKNOWN = "ERROR // PROCESSING FAILURE";
@@ -50,35 +54,48 @@ void app_frame_dispatch(const lownet_frame_t* frame) {
 void lownet_decrypt(const lownet_secure_frame_t* cipher, lownet_secure_frame_t* plain) {
 	const uint8_t* aes_key = lownet_get_key()->bytes;
 
-	// AES decryption using ESP-IDF's aes_crypt function.
 	esp_aes_context aes_ctx;
-	esp_aes_setkey(&aes_ctx, aes_key, 256);
+	esp_aes_init(&aes_ctx);
 
-	// Decrypt the frame payload.
-	esp_aes_crypt_ecb(&aes_ctx, ESP_AES_DECRYPT, cipher->frame.payload, plain->frame.payload);
+	if (esp_aes_setkey(&aes_ctx, aes_key, 256))
+		return;
 
-	// Copy IVT and Padding.
 	memcpy(plain->ivt, cipher->ivt, LOWNET_IVT_SIZE);
-	memcpy(plain->padding, cipher->padding, LOWNET_CRYPTPAD_SIZE);
+
+	// First decompose the frame into one big string that we will decrypt
+	snprintf(source_str, sizeof(cipher->frame.source), "%c", cipher->frame.source);
+
+
+	// Then decrypt the string
+	//esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, sizeof(cipher->frame.source), plain->ivt, source_str, plain->frame.source);
+	// esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, sizeof(cipher->frame.destination), plain->ivt, cipher->frame.destination, plain->frame.destination);
+	// esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, sizeof(cipher->frame.protocol), plain->ivt, cipher->frame.protocol, plain->frame.protocol);
+	// esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, sizeof(cipher->frame.length), plain->ivt, cipher->frame.length, plain->frame.length);
+	// esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, sizeof(cipher->frame.payload), plain->ivt, cipher->frame.payload, plain->frame.payload);
+	// esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, sizeof(cipher->frame.crc), plain->ivt, cipher->frame.crc, plain->frame.crc);
+	// esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, sizeof(cipher->padding), plain->ivt, cipher->frame.padding, plain->frame.padding);
+
+
+	// Construct 
+
+	esp_aes_free(&aes_ctx);
 }
 
 void lownet_encrypt(const lownet_secure_frame_t* plain, lownet_secure_frame_t* cipher) {
-	/*
+	/*const uint8_t* aes_key = lownet_get_key()->bytes;
 
-	const uint8_t* aes_key = lownet_get_key()->bytes;
+	esp_aes_context aes_ctx;
+	asp_aes_init(&aes_ctx);
 
-    // Copy IVT and Padding from the input `plain` to the output `cipher`.
-    memcpy(cipher->ivt, plain->ivt, LOWNET_IVT_SIZE);
-    memcpy(cipher->padding, plain->padding, LOWNET_CRYPTPAD_SIZE);
+	if (!esp_aes_setkey(&aes_ctx, aes_key, 256))
+		return;
 
-    // AES encryption using ESP-IDF's aes_crypt function.
-    esp_aes_context aes_ctx;
-    esp_aes_setkey(&aes_ctx, aes_key, 256, ESP_AES_ENCRYPT);
+	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, sizeof(plain->frame), plain->ivt, plain->frame, cipher->frame);
+	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, sizeof(plain->frame), plain->ivt, plain->padding, cipher->padding);
 
-    // Encrypt the frame payload.
-    esp_aes_crypt_ecb(&aes_ctx, ESP_AES_ENCRYPT, plain->frame.payload, cipher->frame.payload);
+	memcpy(cipher->ivt, plain->ivt, LOWNET_IVT_SIZE);
 
-	*/
+	esp_aes_free(&aes_ctx);*/
 
 }
 
