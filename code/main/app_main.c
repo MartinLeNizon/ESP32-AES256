@@ -50,13 +50,36 @@ void app_frame_dispatch(const lownet_frame_t* frame) {
 void lownet_decrypt(const lownet_secure_frame_t* cipher, lownet_secure_frame_t* plain) {
 	const uint8_t* aes_key = lownet_get_key()->bytes;
 
-	// IMPLEMENT ME
+	// AES decryption using ESP-IDF's aes_crypt function.
+	esp_aes_context aes_ctx;
+	esp_aes_setkey(&aes_ctx, aes_key, 256);
+
+	// Decrypt the frame payload.
+	esp_aes_crypt_ecb(&aes_ctx, ESP_AES_DECRYPT, cipher->frame.payload, plain->frame.payload);
+
+	// Copy IVT and Padding.
+	memcpy(plain->ivt, cipher->ivt, LOWNET_IVT_SIZE);
+	memcpy(plain->padding, cipher->padding, LOWNET_CRYPTPAD_SIZE);
 }
 
 void lownet_encrypt(const lownet_secure_frame_t* plain, lownet_secure_frame_t* cipher) {
+	/*
+
 	const uint8_t* aes_key = lownet_get_key()->bytes;
 
-	// IMPLEMENT ME
+    // Copy IVT and Padding from the input `plain` to the output `cipher`.
+    memcpy(cipher->ivt, plain->ivt, LOWNET_IVT_SIZE);
+    memcpy(cipher->padding, plain->padding, LOWNET_CRYPTPAD_SIZE);
+
+    // AES encryption using ESP-IDF's aes_crypt function.
+    esp_aes_context aes_ctx;
+    esp_aes_setkey(&aes_ctx, aes_key, 256, ESP_AES_ENCRYPT);
+
+    // Encrypt the frame payload.
+    esp_aes_crypt_ecb(&aes_ctx, ESP_AES_ENCRYPT, plain->frame.payload, cipher->frame.payload);
+
+	*/
+
 }
 
 void two_way_test() {
