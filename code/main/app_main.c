@@ -2,10 +2,6 @@
 Lim. 10 s for the 3 frames when signed
 -----------------------------------------------*/
 
-/* -------------- TO-DO ----------------
-Decomposition & composition of the frame inside methods
---------------------------------------*/
-
 // CSTDLIB includes.
 #include <stdio.h>
 #include <string.h>
@@ -30,8 +26,6 @@ const char* ERROR_UNKNOWN = "ERROR // PROCESSING FAILURE";
 const char* ERROR_COMMAND = "Command error";
 const char* ERROR_ARGUMENT = "Argument error";
 
-#define ENCRYPTED_LENGTH 	(LOWNET_FRAME_SIZE + LOWNET_CRYPTPAD_SIZE)
-
 void app_frame_dispatch(const lownet_frame_t* frame) {
 	// Mask the signing bits.
 	switch(frame->protocol & 0b00111111) {
@@ -55,6 +49,8 @@ void app_frame_dispatch(const lownet_frame_t* frame) {
 
 void lownet_decrypt(const lownet_secure_frame_t* cipher, lownet_secure_frame_t* plain) {
 	const uint8_t* aes_key = lownet_get_key()->bytes;
+	uint8_t aes_ivt[LOWNET_IVT_SIZE];
+	memcpy(aes_ivt, cipher->ivt, LOWNET_IVT_SIZE);
 
 	esp_aes_context aes_ctx;
 	esp_aes_init(&aes_ctx);
@@ -66,42 +62,17 @@ void lownet_decrypt(const lownet_secure_frame_t* cipher, lownet_secure_frame_t* 
 
 	unsigned char cipher_string [ENCRYPTED_LENGTH];
 	unsigned char plain_string [ENCRYPTED_LENGTH];
-
-	memcpy(cipher_string, cipher->frame.source, LOWNET_SOURCE_SIZE);
-	memcpy(cipher_string[LOWNET_SOURCE_SIZE], cipher->frame.destination, LOWNET_DEST_SIZE);
-	memcpy(cipher_string[LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE], cipher->frame.protocol, LOWNET_PROTOCOL_SIZE);
-	memcpy(cipher_string[LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE + LOWNET_PROTOCOL_SIZE], cipher->frame.length, LOWNET_LENGTH_SIZE);
-	memcpy(cipher_string[LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE + LOWNET_PROTOCOL_SIZE + LOWNET_LENGTH_SIZE], cipher->frame.payload, LOWNET_PAYLOAD_SIZE);
-	memcpy(cipher_string[LOWNET_FRAME_SIZE], cipher->padding, LOWNET_CRYPTPAD_SIZE);
-
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, ENCRYPTED_LENGTH, plain->ivt, cipher_string, plain_string);
-	
-    // Reconstruct the plain frame.
-    memcpy(plain->frame.source, plain_string, LOWNET_SOURCE_SIZE);
-    memcpy(plain->frame.destination, plain_string[LOWNET_SOURCE_SIZE], LOWNET_DEST_SIZE);
-    memcpy(plain->frame.protocol, plain_string[LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE], LOWNET_PROTOCOL_SIZE);
-    memcpy(plain->frame.length, plain_string[LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE + LOWNET_PROTOCOL_SIZE], LOWNET_LENGTH_SIZE);
-    memcpy(plain->frame.payload, plain_string[LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE + LOWNET_PROTOCOL_SIZE + LOWNET_LENGTH_SIZE], LOWNET_PAYLOAD_SIZE);
-    memcpy(plain->padding, plain_string[LOWNET_FRAME_SIZE], LOWNET_CRYPTPAD_SIZE);
-
-
-	/*esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, LOWNET_SOURCE_SIZE, plain->ivt, cipher->frame.source, plain->frame.source);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, LOWNET_DEST_SIZE, plain->ivt, cipher->frame.destination, plain->frame.destination);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, LOWNET_PROTOCOL_SIZE, plain->ivt, cipher->frame.protocol, plain->frame.protocol);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, LOWNET_LENGTH_SIZE, plain->ivt, cipher->frame.length, plain->frame.length);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, LOWNET_PAYLOAD_SIZE, plain->ivt, cipher->frame.payload, plain->frame.payload);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, LOWNET_CRC_SIZE, plain->ivt, cipher->frame.crc, plain->frame.crc);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, LOWNET_CRYPTPAD_SIZE, plain->ivt, cipher->padding, plain->padding);
-
-	// Remove the padding
-	uint8_t padding_length = plain->frame.payload[LOWNET_PAYLOAD_SIZE - 1];
-    plain->frame.payload[LOWNET_PAYLOAD_SIZE - padding_length - 1] = '\0';*/
+	memcpy(cipher_string, &cipher->frame, ENCRYPTED_LENGTH);
+	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, ENCRYPTED_LENGTH, aes_ivt, cipher_string, plain_string);
+	memcpy(&plain->frame, plain_string, ENCRYPTED_LENGTH);
 
 	esp_aes_free(&aes_ctx);
 }
 
 void lownet_encrypt(const lownet_secure_frame_t* plain, lownet_secure_frame_t* cipher) {
 	const uint8_t* aes_key = lownet_get_key()->bytes;
+	uint8_t aes_ivt[LOWNET_IVT_SIZE];
+	memcpy(aes_ivt, plain->ivt, LOWNET_IVT_SIZE);
 
 	esp_aes_context aes_ctx;
 	esp_aes_init(&aes_ctx);
@@ -113,37 +84,9 @@ void lownet_encrypt(const lownet_secure_frame_t* plain, lownet_secure_frame_t* c
 
 	unsigned char plain_string [ENCRYPTED_LENGTH];
 	unsigned char cipher_string [ENCRYPTED_LENGTH];
-
-	memcpy(plain_string, plain->frame.source, LOWNET_SOURCE_SIZE);
-	memcpy(plain_string[LOWNET_SOURCE_SIZE], plain->frame.destination, LOWNET_DEST_SIZE);
-	memcpy(plain_string[LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE], plain->frame.protocol, LOWNET_PROTOCOL_SIZE);
-	memcpy(plain_string[LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE + LOWNET_PROTOCOL_SIZE], plain->frame.length, LOWNET_LENGTH_SIZE);
-	memcpy(plain_string[LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE + LOWNET_PROTOCOL_SIZE + LOWNET_LENGTH_SIZE], plain->frame.payload, LOWNET_PAYLOAD_SIZE);
-	memcpy(plain_string[LOWNET_FRAME_SIZE], plain->padding, LOWNET_CRYPTPAD_SIZE);
-
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, ENCRYPTED_LENGTH, plain->ivt, plain_string, cipher_string);
-	
-    // Reconstruct the plain frame.
-    memcpy(cipher->frame.source, cipher_string, LOWNET_SOURCE_SIZE);
-    memcpy(cipher->frame.destination, cipher_string[LOWNET_SOURCE_SIZE], LOWNET_DEST_SIZE);
-    memcpy(cipher->frame.protocol, cipher_string[LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE], LOWNET_PROTOCOL_SIZE);
-    memcpy(cipher->frame.length, cipher_string[LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE + LOWNET_PROTOCOL_SIZE], LOWNET_LENGTH_SIZE);
-    memcpy(cipher->frame.payload, cipher_string[LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE + LOWNET_PROTOCOL_SIZE + LOWNET_LENGTH_SIZE], LOWNET_PAYLOAD_SIZE);
-    memcpy(cipher->padding, cipher_string[LOWNET_FRAME_SIZE], LOWNET_CRYPTPAD_SIZE);
-
-	//esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, LOWNET_FRAME_SIZE+LOWNET_CRYPTPAD_SIZE, cipher->ivt, &plain->frame, &cipher->frame);
-	
-	/*esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, LOWNET_SOURCE_SIZE, cipher->ivt, plain->frame.source, cipher->frame.source);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, LOWNET_DEST_SIZE, cipher->ivt, plain->frame.destination, cipher->frame.destination);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, LOWNET_PROTOCOL_SIZE, cipher->ivt, plain->frame.protocol, cipher->frame.protocol);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, LOWNET_LENGTH_SIZE, cipher->ivt, plain->frame.length, cipher->frame.length);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, LOWNET_PAYLOAD_SIZE, cipher->ivt, plain->frame.payload, cipher->frame.payload);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, LOWNET_CRC_SIZE, cipher->ivt, plain->frame.crc, cipher->frame.crc);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, LOWNET_CRYPTPAD_SIZE, cipher->ivt, plain->padding, cipher->padding);
-
-	// Calculate the padding length and set it at the end of the payload.
-    uint8_t padding_length = 16 - (LOWNET_PAYLOAD_SIZE % 16);
-    cipher->frame.payload[LOWNET_PAYLOAD_SIZE - 1] = padding_length;*/
+	memcpy(plain_string, &plain->frame, ENCRYPTED_LENGTH);
+	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, ENCRYPTED_LENGTH, aes_ivt, plain_string, cipher_string);
+	memcpy(&cipher->frame, cipher_string, ENCRYPTED_LENGTH);
 
 	esp_aes_free(&aes_ctx);
 }
@@ -166,10 +109,6 @@ void two_way_test() {
 	lownet_encrypt(&plain, &cipher);
 	lownet_decrypt(&cipher, &back);
 
-	//dbg
-	printf("2wayt back frame payload len: %d\n", strlen((char*)back.frame.payload));
-	printf("2wayt msg len: %d\n", strlen(message));
-
 	if (strlen((char*)back.frame.payload) != strlen(message)) {
 		ESP_LOGE("APP", "Length violation");
 	} else {
@@ -177,14 +116,13 @@ void two_way_test() {
 	}
 }
 
-void app_main(void)
-{
+void app_main(void) {
 	char msg_in[MSG_BUFFER_LENGTH];
 	char msg_out[MSG_BUFFER_LENGTH];
 
 	// Generate 32 bytes of noise up front and dump the HEX out.  No explicit purpose except
 	//	convenience if you want an arbitrary 32 bytes.
-	uint32_t rand = esp_random();
+	// uint32_t rand = esp_random();
 	uint32_t key_buffer[8];
 	for (int i = 0; i < 8; ++i) {
 		key_buffer[i] = esp_random();
@@ -203,7 +141,6 @@ void app_main(void)
 	//	lines are not needed when an actual source of network time is present.
 	lownet_time_t init_time = {1, 0};
 	lownet_set_time(&init_time);
-
 
 	while (true) {
 		memset(msg_in, 0, MSG_BUFFER_LENGTH);
@@ -250,7 +187,6 @@ void app_main(void)
 				} else if (!strcmp(msg_in, "/dbg") && lownet_get_key() != NULL) {
 					// Tiny little debugging helper -- see two_way_test(..) implementation above.
 					two_way_test();
-
 				} else {
 					serial_write_line(ERROR_COMMAND);
 
