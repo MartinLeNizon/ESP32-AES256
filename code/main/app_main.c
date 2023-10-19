@@ -93,7 +93,7 @@ void lownet_decrypt(const lownet_secure_frame_t* cipher, lownet_secure_frame_t* 
 	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, LOWNET_CRC_SIZE, plain->ivt, cipher->frame.crc, plain->frame.crc);
 	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, LOWNET_CRYPTPAD_SIZE, plain->ivt, cipher->padding, plain->padding);
 
-	// Remove the padding.
+	// Remove the padding
 	uint8_t padding_length = plain->frame.payload[LOWNET_PAYLOAD_SIZE - 1];
     plain->frame.payload[LOWNET_PAYLOAD_SIZE - padding_length - 1] = '\0';*/
 
