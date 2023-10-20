@@ -1,6 +1,7 @@
 // #include <thread>
 // #include <chrono>
 #include <stdint.h>
+#include <string.h>
 
 #include "app_command.h"
 
@@ -19,7 +20,9 @@ void command_init() {
 }
 
 void cmd_handle_time(const command_payload_t* cmd) {
-
+	lownet_time_t time;
+	memcpy(&time, cmd->data, sizeof(lownet_time_t));
+	lownet_set_time(&time);
 }
 
 void cmd_handle_test(const command_payload_t* cmd){
@@ -32,7 +35,7 @@ void handle_command_frame(const lownet_frame_t* frame) {
 
 	const command_payload_t* cmd = (const command_payload_t*) frame->payload;
 
-	uint8_t frame_type = frame->protocol >> 6;
+	// uint8_t frame_type = frame->protocol >> 6;
 
 	switch(cmd->type) {
 		case CMD_TYPE_TIME:
