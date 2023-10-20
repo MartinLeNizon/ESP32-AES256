@@ -19,6 +19,7 @@ Lim. 10 s for the 3 frames when signed
 
 #include "app_chat.h"
 #include "app_ping.h"
+#include "app_command.h"
 
 const char* ERROR_OVERRUN = "ERROR // INPUT OVERRUN";
 const char* ERROR_UNKNOWN = "ERROR // PROCESSING FAILURE";
@@ -42,7 +43,7 @@ void app_frame_dispatch(const lownet_frame_t* frame) {
 			break;
 
 		case LOWNET_PROTOCOL_COMMAND:
-			// IMPLEMENT ME
+			handle_command_frame(frame);
 			break;
 	}
 }
