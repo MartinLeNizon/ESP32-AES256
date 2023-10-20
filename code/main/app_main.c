@@ -2,6 +2,18 @@
 Lim. 10 s for the 3 frames when signed
 -----------------------------------------------*/
 
+/* -------------------------------------------------- TO-DO -----------------------------------------------
+
+Set the timer of 10 seconds when receiving a signed frame
+
+Check that a command is valid if:
+i) signature is valid
+ii) no valid command with equal or higher sequence number has been received
+
+Should the input be too short, it will be padded with zeroes. (2.7)
+
+----------------------------------------------------------------------------------------------------------*/
+
 // CSTDLIB includes.
 #include <stdio.h>
 #include <string.h>
