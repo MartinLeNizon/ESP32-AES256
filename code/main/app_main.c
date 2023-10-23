@@ -149,6 +149,8 @@ void app_main(void) {
 	//	decrypt functions (defined above, TO BE IMPLEMENTED BY STUDENTS).
 	lownet_init(app_frame_dispatch, lownet_encrypt, lownet_decrypt);
 
+	// Initialize the Command Protocol services.
+	command_init();
 
 	// Dummy implementation -- this isn't true network time!  Following 2
 	//	lines are not needed when an actual source of network time is present.
