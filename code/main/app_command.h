@@ -23,8 +23,11 @@ typedef struct __attribute__((__packed__)) {
 
 void command_init();
 
-void cmd_handle_time(const command_payload_t* cmd);
-void cmd_handle_test(const command_payload_t* cmd);
+void cmd_process_time(const command_payload_t* cmd);
+
+void cmd_process_test(const command_payload_t* cmd);
+
+void process_command_frame(const lownet_frame_t* frame);
 
 void handle_command_frame(const lownet_frame_t* frame);
 
