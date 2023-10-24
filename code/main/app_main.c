@@ -4,18 +4,24 @@ Lim. 10 s for the 3 frames when signed
 
 /* -------------------------------------------------- TO-DO -----------------------------------------------
 
-Set the timer of 10 seconds when receiving a signed frame
+Set the timer of 10 seconds when receiving a signed frame.
 
 Check that a command is valid if:
-i) signature is valid
-ii) no valid command with equal or higher sequence number has been received
+i) signature is valid.
+ii) no valid command with equal or higher sequence number has been received.
 
 Should the input be too short, it will be padded with zeroes. (2.7)
 
 Be able to handle signature before main frame:
-	- Idea: do a union, to store either the main frame or signature first
+	- Idea: do a union, to store either the main frame or signature first.
+
+Be able to receive the second signature before the first one.
 
 Change magic numbers struct command buffer by "define"
+
+Error messages, especially in app_command.c:
+	- When calculating hashes.
+	- When checking the signature of a non signature frame.
 
 ----------------------------------------------------------------------------------------------------------*/
 
@@ -235,4 +241,6 @@ void app_main(void) {
 			}
 		}
 	}
+
+	command_finish();	// Never called?
 }

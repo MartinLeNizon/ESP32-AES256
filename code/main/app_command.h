@@ -23,6 +23,8 @@
 #define STATE_IDLE					0
 #define STATE_LISTENING				1
 
+#define SIGNATURE_LENGTH			256 		// Depends on the hash, here 256 because SHA256.
+
 #define SIGNATURE_UNVERIFIED		0
 #define SIGNATURE_VERIFIED 			1
 
@@ -36,7 +38,8 @@ typedef struct __attribute__((__packed__)) {
 typedef struct __attribute__((__packed__)) {
 	uint8_t listening_and_signature_verified;		// lxxxxxfs; l: listening bit; x: unused bits; f: first part of the signature verified; s: second part of the signature verified.
 	uint64_t sequence_number;
-	lownet_frame_t buffer[NB_SIMULTANEOUS_FRAMES];
+	lownet_frame_t frame_buffer[NB_SIMULTANEOUS_FRAMES];
+	char signature_buffer[SIGNATURE_LENGTH];
 	uint64_t start_time;	// In µs.
 } state_t;
 
@@ -48,7 +51,9 @@ void state_init(state_t *s);
 
 void command_init();
 
-uint8_t check_signature(const lownet_frame_t* msg_frame, const lownet_frame_t* signature_frame, const char *key, const size_t key_length);
+void command_finish();
+
+uint8_t check_signature(const lownet_frame_t* signature_frame, const char *key, const size_t key_length);
 
 void cmd_process_time(const command_payload_t* cmd);
 
