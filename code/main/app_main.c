@@ -12,6 +12,11 @@ ii) no valid command with equal or higher sequence number has been received
 
 Should the input be too short, it will be padded with zeroes. (2.7)
 
+Be able to handle signature before main frame:
+	- Idea: do a union, to store either the main frame or signature first
+
+Change magic numbers struct command buffer by "define"
+
 ----------------------------------------------------------------------------------------------------------*/
 
 // CSTDLIB includes.

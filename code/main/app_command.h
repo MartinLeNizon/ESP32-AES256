@@ -6,6 +6,8 @@
 #define COMMAND_RESERVED_LENGTH		3
 #define COMMAND_DATA_LENGTH			180
 
+#define HASH_LENGTH					32
+
 #define CMD_TYPE_TIME				0x01
 #define CMD_TYPE_TEST				0x02
 
@@ -38,15 +40,15 @@ typedef struct __attribute__((__packed__)) {
 	uint64_t start_time;	// In µs.
 } state_t;
 
-typedef struct __attribute__((__packed__)) {
+void calculate_sha256_hash(const char *input, const size_t input_length, unsigned char *output);
 
-} frame_verified;
+void set_nth_bit(uint8_t *var, const uint8_t pos, const uint8_t value);
 
-void setNthBit(uint8_t *var, const uint8_t pos, const uint8_t value);
-
-void initializeState(state_t *s);
+void state_init(state_t *s);
 
 void command_init();
+
+uint8_t check_signature(const lownet_frame_t* msg_frame, const lownet_frame_t* signature_frame, const char *key, const size_t key_length);
 
 void cmd_process_time(const command_payload_t* cmd);
 
