@@ -6,6 +6,8 @@
 #include <esp_timer.h>
 
 #include "mbedtls/sha256.h"
+# include "mbedtls/rsa.h"
+# include "mbedtls/pk.h"
 
 #include "app_command.h"
 
@@ -14,16 +16,37 @@
 
 const char* ERROR_SEQUENCE = "ERROR // SEQUENCE NUMBER";
 const char* ERROR_SIGNATURE_ORDER = "ERROR // SECOND PART OF THE SIGNATURE RECEIVE BEFORE THE FIRST ONE";
+const char* ERROR_PARSE_KEY = "ERROR // PARSE KEY";
+const char* ERROR_SIGNATURE = "ERROR // WRONG SIGNATURE";
 
 state_t * state = NULL;
 
-void calculate_sha256_hash(const char *input, const size_t input_length, unsigned char *output) {
+void calculate_sha256_hash(const char *msg, const size_t msg_length, unsigned char *hash) {
     mbedtls_sha256_context sha256_ctx;
     mbedtls_sha256_init(&sha256_ctx);
     mbedtls_sha256_starts(&sha256_ctx, 0);
-    mbedtls_sha256_update(&sha256_ctx, (const unsigned char *)input, input_length);
-    mbedtls_sha256_finish(&sha256_ctx, output);
+    mbedtls_sha256_update(&sha256_ctx, (const unsigned char *) msg, msg_length);
+    mbedtls_sha256_finish(&sha256_ctx, hash);
     mbedtls_sha256_free(&sha256_ctx);
+}
+
+void decrypt_rsa(const char *cipher, char *plain, const char *rsa_key) {
+	mbedtls_pk_context pk;
+	mbedtls_pk_init(&pk);
+
+	mbedtls_rsa_context rsa;
+
+	if (mbedtls_pk_parse_key(&pk, (unsigned char *) rsa_key, strlen(rsa_key), NULL, 0, NULL, 0)) {
+		mbedtls_rsa_free(&rsa);
+		serial_write_line(ERROR_PARSE_KEY);
+		return;
+	}
+
+	memcpy(&rsa, mbedtls_pk_rsa(pk), sizeof(rsa));
+
+	// Decrypt the signature with the public key.
+	mbedtls_rsa_private(&rsa, 0, 0, (unsigned char *) cipher, (unsigned char *) plain);
+	mbedtls_rsa_free(&rsa);
 }
 
 void set_nth_bit(uint8_t *var, const uint8_t pos, const uint8_t value) {
@@ -55,9 +78,9 @@ void command_finish() {
 	state = NULL;
 }
 
-uint8_t check_signature(const lownet_frame_t* signature_frame, const char *key, const size_t key_length) {
+uint8_t check_signature(const lownet_frame_t* signature_frame, const char *key) {
 	unsigned char key_sha256_hash[HASH_LENGTH];
-	calculate_sha256_hash(key, key_length, key_sha256_hash);
+	calculate_sha256_hash(key, strlen(key), key_sha256_hash);
 	if ( memcmp(&signature_frame->payload, key_sha256_hash, HASH_LENGTH) )	{	// Wrong key hash value.
 		return 1;
 	}
@@ -82,22 +105,28 @@ uint8_t check_signature(const lownet_frame_t* signature_frame, const char *key, 
 		}
 		memcpy(state->signature_buffer + SIGNATURE_LENGTH/2, signature_frame + 2*HASH_LENGTH, SIGNATURE_LENGTH/2);
 
-		// Decrypt the received signature using the sender's public key to get a hash of the message.
-		// Compare this hash with the hash of the real message.
+		// Compare the hash from the signature with the hash of the message.
+		// The hash from the signature is the plain text of the signature, decrypted with RSA using the public key.
+		char msg_sha256_hash_from_signature[HASH_LENGTH];
+		decrypt_rsa(state->signature_buffer, msg_sha256_hash_from_signature, lownet_public_key);
 
+		if (memcmp(msg_sha256_hash, msg_sha256_hash_from_signature, HASH_LENGTH)) {		// If hashes are different
+			serial_write_line(ERROR_SIGNATURE);
+			return 1;
+		} else {	// Everything's fine, process the command.
+			return 0;
+		}
 
 		break;
 	}
 
-	// -->> TO COMPLETE / SIGNATURE...
-
-	return 0;
+	return 0;	// No error.
 }
 
 void cmd_process_time(const command_payload_t* cmd) {
-	// lownet_time_t time;
-	// memcpy(&time, cmd->data, sizeof(lownet_time_t));
-	// lownet_set_time(&time);
+	lownet_time_t time;
+	memcpy(&time, cmd->data, sizeof(lownet_time_t));
+	lownet_set_time(&time);
 }
 
 void cmd_process_test(const command_payload_t* cmd){
@@ -127,8 +156,6 @@ void process_command_frame(const command_payload_t* cmd) {
 void handle_command_frame(const lownet_frame_t* frame) {
 	if (!frame) return;
 
-	const command_payload_t* cmd = (const command_payload_t*) frame->payload;
-
 	uint8_t frame_type = frame->protocol >> 6;
 
 	if ( ( (state->listening_and_signature_verified & (1<<7)) == (STATE_LISTENING << 7) ) && ( (esp_timer_get_time() - state->start_time)/1000 >= SIGNATURE_MAX_DELAY) ) {		// Convert μs to ms.
@@ -153,14 +180,20 @@ void handle_command_frame(const lownet_frame_t* frame) {
 	case STATE_LISTENING:
 		switch (frame_type) {
 		case LOWNET_FIRST_SIGNATURE:
+			check_signature(frame, lownet_public_key);
 			// -->> check_signature();
 			// TO COMPLETE.
 			break;
 		case LOWNET_SECOND_SIGNATURE:
+			if (!check_signature(frame, lownet_public_key)) {
+				const command_payload_t* cmd = (const command_payload_t*) frame->payload;
+				process_command_frame(cmd);
+			}
 			break;
 		default:
 			return;
 		}
+
 		break;
 	}
 }

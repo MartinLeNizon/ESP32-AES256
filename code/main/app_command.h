@@ -53,7 +53,7 @@ void command_init();
 
 void command_finish();
 
-uint8_t check_signature(const lownet_frame_t* signature_frame, const char *key, const size_t key_length);
+uint8_t check_signature(const lownet_frame_t* signature_frame, const char *key);
 
 void cmd_process_time(const command_payload_t* cmd);
 
