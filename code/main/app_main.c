@@ -25,6 +25,8 @@ Error messages, especially in app_command.c:
 
 ----------------------------------------------------------------------------------------------------------*/
 
+#define DBG
+
 // CSTDLIB includes.
 #include <stdio.h>
 #include <string.h>
@@ -55,21 +57,29 @@ void app_frame_dispatch(const lownet_frame_t* frame) {
 	switch(frame->protocol & 0b00111111) {
 		case LOWNET_PROTOCOL_TIME:
 			// Ignore TIME packets, deprecated.
-			serial_write_line("time_frame_received");
+			#ifdef DBG
+				serial_write_line("time_frame_received");
+			#endif
 			break;
 
 		case LOWNET_PROTOCOL_CHAT:
-			serial_write_line("chat_frame_received");
+			#ifdef DBG
+				serial_write_line("chat_frame_received");
+			#endif
 			chat_receive(frame);
 			break;
 
 		case LOWNET_PROTOCOL_PING:
-			serial_write_line("ping_frame_received");
+			#ifdef DBG
+				serial_write_line("ping_frame_received");
+			#endif
 			ping_receive(frame);
 			break;
 
 		case LOWNET_PROTOCOL_COMMAND:
-			serial_write_line("command_frame_received");
+			#ifdef DBG
+				serial_write_line("command_frame_received");
+			#endif
 			handle_command_frame(frame);
 			break;
 	}
@@ -88,11 +98,11 @@ void lownet_decrypt(const lownet_secure_frame_t* cipher, lownet_secure_frame_t* 
 
 	memcpy(plain->ivt, cipher->ivt, LOWNET_IVT_SIZE);
 
-	unsigned char cipher_string [ENCRYPTED_LENGTH];
-	unsigned char plain_string [ENCRYPTED_LENGTH];
-	memcpy(cipher_string, &cipher->frame, ENCRYPTED_LENGTH);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, ENCRYPTED_LENGTH, aes_ivt, cipher_string, plain_string);
-	memcpy(&plain->frame, plain_string, ENCRYPTED_LENGTH);
+	unsigned char cipher_string [LOWNET_ENCRYPTED_LENGTH];
+	unsigned char plain_string [LOWNET_ENCRYPTED_LENGTH];
+	memcpy(cipher_string, &cipher->frame, LOWNET_ENCRYPTED_LENGTH);
+	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_DECRYPT, LOWNET_ENCRYPTED_LENGTH, aes_ivt, cipher_string, plain_string);
+	memcpy(&plain->frame, plain_string, LOWNET_ENCRYPTED_LENGTH);
 
 	esp_aes_free(&aes_ctx);
 }
@@ -110,11 +120,11 @@ void lownet_encrypt(const lownet_secure_frame_t* plain, lownet_secure_frame_t* c
 
 	memcpy(cipher->ivt, plain->ivt, LOWNET_IVT_SIZE);
 
-	unsigned char plain_string [ENCRYPTED_LENGTH];
-	unsigned char cipher_string [ENCRYPTED_LENGTH];
-	memcpy(plain_string, &plain->frame, ENCRYPTED_LENGTH);
-	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, ENCRYPTED_LENGTH, aes_ivt, plain_string, cipher_string);
-	memcpy(&cipher->frame, cipher_string, ENCRYPTED_LENGTH);
+	unsigned char plain_string [LOWNET_ENCRYPTED_LENGTH];
+	unsigned char cipher_string [LOWNET_ENCRYPTED_LENGTH];
+	memcpy(plain_string, &plain->frame, LOWNET_ENCRYPTED_LENGTH);
+	esp_aes_crypt_cbc(&aes_ctx, ESP_AES_ENCRYPT, LOWNET_ENCRYPTED_LENGTH, aes_ivt, plain_string, cipher_string);
+	memcpy(&cipher->frame, cipher_string, LOWNET_ENCRYPTED_LENGTH);
 
 	esp_aes_free(&aes_ctx);
 }
@@ -144,6 +154,37 @@ void two_way_test() {
 	}
 }
 
+// ------------------ TESTS ------------------------------
+
+void try_time() {
+	lownet_frame_t frame;
+	memset(&frame, 0, sizeof(frame));
+
+	frame.source = 0xF0;
+	frame.destination = lownet_get_device_id();
+	frame.protocol = LOWNET_PROTOCOL_COMMAND;
+	frame.protocol |= 0b01000000;
+	frame.length = sizeof(lownet_time_t);
+
+	lownet_time_t time;
+	memset(&time, 0, sizeof(time));
+	time.seconds = 123456;
+	time.parts = 18;
+
+	memset(frame.payload + 8, 1, 1);
+	memcpy(frame.payload + 12, &time, sizeof(time));
+
+	app_frame_dispatch(&frame);
+
+	serial_write_line("<FAKE TIME PACKET SENT>");
+}
+
+void try_test() {
+
+}
+
+// -------------------------------------------------------
+
 void app_main(void) {
 	char msg_in[MSG_BUFFER_LENGTH];
 	char msg_out[MSG_BUFFER_LENGTH];
@@ -163,9 +204,6 @@ void app_main(void) {
 	// Initialize the LowNet services, pass in function pointers for encrypt and
 	//	decrypt functions (defined above, TO BE IMPLEMENTED BY STUDENTS).
 	lownet_init(app_frame_dispatch, lownet_encrypt, lownet_decrypt);
-
-	// Initialize the Command Protocol services.
-	command_init();
 
 	// Dummy implementation -- this isn't true network time!  Following 2
 	//	lines are not needed when an actual source of network time is present.
@@ -222,6 +260,10 @@ void app_main(void) {
 				} else if (!strcmp(msg_in, "/dbg") && lownet_get_key() != NULL) {
 					// Tiny little debugging helper -- see two_way_test(..) implementation above.
 					two_way_test();
+				} else if (!strcmp(msg_in, "/try_time")) {
+					try_time();
+				} else if (!strcmp(msg_in, "/try_test")) {
+					try_test();
 				} else {
 					serial_write_line(ERROR_COMMAND);
 
@@ -250,6 +292,4 @@ void app_main(void) {
 			}
 		}
 	}
-
-	command_finish();	// Never called?
 }

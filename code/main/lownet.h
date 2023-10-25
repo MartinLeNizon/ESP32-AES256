@@ -3,35 +3,34 @@
 
 #include <stdint.h>
 
-#define LOWNET_SERVICE_CORE		1
-#define LOWNET_SERVICE_PRIO		10
+#define LOWNET_SERVICE_CORE			1
+#define LOWNET_SERVICE_PRIO			10
 
-#define LOWNET_PROTOCOL_RESERVE	0x00
-#define LOWNET_PROTOCOL_TIME	0x01
-#define LOWNET_PROTOCOL_CHAT	0x02
-#define LOWNET_PROTOCOL_PING	0x03
-#define LOWNET_PROTOCOL_COMMAND	0x04
+#define LOWNET_PROTOCOL_RESERVE		0x00
+#define LOWNET_PROTOCOL_TIME		0x01
+#define LOWNET_PROTOCOL_CHAT		0x02
+#define LOWNET_PROTOCOL_PING		0x03
+#define LOWNET_PROTOCOL_COMMAND		0x04
 
-#define LOWNET_FRAME_SIZE		200
-#define LOWNET_SOURCE_SIZE		1
-#define LOWNET_DEST_SIZE		1
-#define LOWNET_PROTOCOL_SIZE	1
-#define LOWNET_LENGTH_SIZE		1
-#define LOWNET_HEAD_SIZE		(LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE + LOWNET_PROTOCOL_SIZE + LOWNET_LENGTH_SIZE)	// 4 bytes.
-#define LOWNET_CRC_SIZE			4
-#define LOWNET_PAYLOAD_SIZE		(LOWNET_FRAME_SIZE - (LOWNET_HEAD_SIZE + LOWNET_CRC_SIZE))	// 192 bytes.
+#define LOWNET_FRAME_SIZE			200
+#define LOWNET_SOURCE_SIZE			1
+#define LOWNET_DEST_SIZE			1
+#define LOWNET_PROTOCOL_SIZE		1
+#define LOWNET_LENGTH_SIZE			1
+#define LOWNET_HEAD_SIZE			(LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE + LOWNET_PROTOCOL_SIZE + LOWNET_LENGTH_SIZE)	// 4 bytes.
+#define LOWNET_CRC_SIZE				4
+#define LOWNET_PAYLOAD_SIZE			(LOWNET_FRAME_SIZE - (LOWNET_HEAD_SIZE + LOWNET_CRC_SIZE))	// 192 bytes.
 
-#define LOWNET_IVT_SIZE			16
-#define LOWNET_CRYPTPAD_SIZE	8
+#define LOWNET_IVT_SIZE				16
+#define LOWNET_CRYPTPAD_SIZE		8
 
-#define ENCRYPTED_LENGTH 		(LOWNET_FRAME_SIZE + LOWNET_CRYPTPAD_SIZE)
+#define LOWNET_ENCRYPTED_LENGTH 	(LOWNET_FRAME_SIZE + LOWNET_CRYPTPAD_SIZE)
 
-#define LOWNET_KEY_SIZE_AES		32
-#define LOWNET_KEY_SIZE_RSA		256
+#define LOWNET_KEY_SIZE_AES			32
+#define LOWNET_KEY_SIZE_RSA			256
 
 // Lownet basic frame structure.
-typedef struct __attribute__((__packed__))
-{
+typedef struct __attribute__((__packed__)) {
 	uint8_t		source;
 	uint8_t		destination;
 	uint8_t		protocol;
@@ -41,22 +40,21 @@ typedef struct __attribute__((__packed__))
 } lownet_frame_t;
 
 // Lownet encrypted frame structure.
-typedef struct __attribute__((__packed__))
-{
+typedef struct __attribute__((__packed__)) {
 	uint8_t			ivt[LOWNET_IVT_SIZE];
 	lownet_frame_t	frame;
 	uint8_t			padding[LOWNET_CRYPTPAD_SIZE];
 } lownet_secure_frame_t;
 
 // Lownet timestamp structure.
-typedef struct __attribute__((__packed__)){
+typedef struct __attribute__((__packed__)) {
 	uint32_t	seconds;	// Seconds since UNIX epoch.
 	uint8_t		parts;		// Milliseconds, 1000/256 resolution.
 } lownet_time_t;
 
 // Lownet key structure.  Bytes member MUST point to a usable contiguous
 //	region of memory of AT LEAST 'size' bytes.
-typedef struct {
+typedef struct __attribute__((__packed__)) {
 	uint8_t* 	bytes;
 	uint32_t 	size;
 } lownet_key_t;
@@ -69,6 +67,7 @@ void lownet_init(
 	lownet_cipher_fn encrypt_fn,
 	lownet_cipher_fn decrypt_fn
 );
+
 void lownet_send(const lownet_frame_t* frame);
 
 
