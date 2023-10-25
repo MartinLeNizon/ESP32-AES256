@@ -55,17 +55,21 @@ void app_frame_dispatch(const lownet_frame_t* frame) {
 	switch(frame->protocol & 0b00111111) {
 		case LOWNET_PROTOCOL_TIME:
 			// Ignore TIME packets, deprecated.
+			serial_write_line("time_frame_received");
 			break;
 
 		case LOWNET_PROTOCOL_CHAT:
+			serial_write_line("chat_frame_received");
 			chat_receive(frame);
 			break;
 
 		case LOWNET_PROTOCOL_PING:
+			serial_write_line("ping_frame_received");
 			ping_receive(frame);
 			break;
 
 		case LOWNET_PROTOCOL_COMMAND:
+			serial_write_line("command_frame_received");
 			handle_command_frame(frame);
 			break;
 	}
@@ -79,7 +83,7 @@ void lownet_decrypt(const lownet_secure_frame_t* cipher, lownet_secure_frame_t* 
 	esp_aes_context aes_ctx;
 	esp_aes_init(&aes_ctx);
 
-	if (esp_aes_setkey(&aes_ctx, aes_key, 256))
+	if (esp_aes_setkey(&aes_ctx, aes_key, LOWNET_KEY_SIZE_RSA))
 		return;
 
 	memcpy(plain->ivt, cipher->ivt, LOWNET_IVT_SIZE);
@@ -101,7 +105,7 @@ void lownet_encrypt(const lownet_secure_frame_t* plain, lownet_secure_frame_t* c
 	esp_aes_context aes_ctx;
 	esp_aes_init(&aes_ctx);
 
-	if (esp_aes_setkey(&aes_ctx, aes_key, 256))
+	if (esp_aes_setkey(&aes_ctx, aes_key, LOWNET_KEY_SIZE_RSA))
 		return;
 
 	memcpy(cipher->ivt, plain->ivt, LOWNET_IVT_SIZE);
@@ -167,6 +171,11 @@ void app_main(void) {
 	//	lines are not needed when an actual source of network time is present.
 	lownet_time_t init_time = {1, 0};
 	lownet_set_time(&init_time);
+
+	// DBG.
+	lownet_key_t use_key = lownet_keystore_read(0);
+	lownet_set_key(&use_key);
+	serial_write_line("Set lownet stored key 0.");
 
 	while (true) {
 		memset(msg_in, 0, MSG_BUFFER_LENGTH);

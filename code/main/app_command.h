@@ -47,6 +47,8 @@ typedef struct __attribute__((__packed__)) {
 
 void calculate_sha256_hash(const char *input, const size_t input_length, unsigned char *output);
 
+// void decrypt_rsa(const char *cipher, char *plain, const char *rsa_key);
+
 void set_nth_bit(uint8_t *var, const uint8_t pos, const uint8_t value);
 
 void state_init(state_t *s);

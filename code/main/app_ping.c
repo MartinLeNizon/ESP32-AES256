@@ -48,6 +48,9 @@ void ping_receive(const lownet_frame_t* frame) {
 	ping_packet_t pak;
 	memcpy(&pak, frame->payload, sizeof(pak));
 
+	printf("frame length: %d\n", frame->length);
+	printf("ping packet size: %d\n", sizeof(pak));
+
 	if (pak.origin == lownet_get_device_id()) {
 		// This is a response to one of our pings.  Print a diagnostic.
 		char buffer[MSG_BUFFER_LENGTH];
