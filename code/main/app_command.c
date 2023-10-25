@@ -19,7 +19,9 @@ const char* ERROR_SIGNATURE_ORDER = "ERROR // SECOND PART OF THE SIGNATURE RECEI
 const char* ERROR_PARSE_KEY = "ERROR // PARSE KEY";
 const char* ERROR_SIGNATURE = "ERROR // WRONG SIGNATURE";
 
-state_t * state = NULL;
+static state_t * cmd_state = NULL;
+
+static uint8_t optionnal_payload_ping [ADDITIONNAL_PAYLOAD_PING_LENGTH];
 
 void calculate_sha256_hash(const char *msg, const size_t msg_length, unsigned char *hash) {
     mbedtls_sha256_context sha256_ctx;
@@ -59,9 +61,9 @@ void set_nth_bit(uint8_t *var, const uint8_t pos, const uint8_t value) {
 
 void state_init(state_t *s) {
 	if (s) {
-		set_nth_bit(&state->listening_and_signature_verified, 7, STATE_IDLE);
-	    set_nth_bit(&state->listening_and_signature_verified, 1, SIGNATURE_UNVERIFIED);
-	    set_nth_bit(&state->listening_and_signature_verified, 0, SIGNATURE_UNVERIFIED);
+		set_nth_bit(&cmd_state->listening_and_signature_verified, 7, STATE_IDLE);
+	    set_nth_bit(&cmd_state->listening_and_signature_verified, 1, SIGNATURE_UNVERIFIED);
+	    set_nth_bit(&cmd_state->listening_and_signature_verified, 0, SIGNATURE_UNVERIFIED);
 	    s->sequence_number = 0;
 	    memset(s->frame_buffer, 0, LOWNET_FRAME_SIZE * NB_SIMULTANEOUS_FRAMES);
 	    s->start_time = 0;
@@ -69,13 +71,13 @@ void state_init(state_t *s) {
 }
 
 void command_init() {
-	state = (state_t *) malloc(sizeof(state_t));
-	state_init(state);
+	cmd_state = (state_t *) malloc(sizeof(state_t));
+	state_init(cmd_state);
 }
 
 void command_finish() {
-	free(state);
-	state = NULL;
+	free(cmd_state);
+	cmd_state = NULL;
 }
 
 uint8_t check_signature(const lownet_frame_t* signature_frame, const char *key) {
@@ -87,7 +89,7 @@ uint8_t check_signature(const lownet_frame_t* signature_frame, const char *key) 
 
 	unsigned char msg_sha256_hash[HASH_LENGTH];
 	char msg_string[LOWNET_FRAME_SIZE];
-	memcpy(msg_string, state->frame_buffer, LOWNET_FRAME_SIZE);
+	memcpy(msg_string, cmd_state->frame_buffer, LOWNET_FRAME_SIZE);
 	calculate_sha256_hash(msg_string, LOWNET_FRAME_SIZE, msg_sha256_hash);
 	if ( memcmp(&signature_frame->payload + HASH_LENGTH, msg_sha256_hash, HASH_LENGTH) )	{	// Wrong msg hash value.
 		return 1;
@@ -95,20 +97,20 @@ uint8_t check_signature(const lownet_frame_t* signature_frame, const char *key) 
 
 	switch (signature_frame->protocol >> 6) {
 	case LOWNET_FIRST_SIGNATURE:
-		set_nth_bit(&state->listening_and_signature_verified, 7, SIGNATURE_VERIFIED);
-		memcpy(state->signature_buffer, signature_frame + 2*HASH_LENGTH, SIGNATURE_LENGTH/2);
+		set_nth_bit(&cmd_state->listening_and_signature_verified, 7, SIGNATURE_VERIFIED);
+		memcpy(cmd_state->signature_buffer, signature_frame + 2*HASH_LENGTH, SIGNATURE_LENGTH/2);
 		break;
 	case LOWNET_SECOND_SIGNATURE:
-		if ( (state->listening_and_signature_verified & (1<<1)) ==  SIGNATURE_UNVERIFIED) {		// If first part of the signature non verified.
+		if ( (cmd_state->listening_and_signature_verified & (1<<1)) ==  SIGNATURE_UNVERIFIED) {		// If first part of the signature non verified.
 			serial_write_line(ERROR_SIGNATURE_ORDER);
 			return 1;
 		}
-		memcpy(state->signature_buffer + SIGNATURE_LENGTH/2, signature_frame + 2*HASH_LENGTH, SIGNATURE_LENGTH/2);
+		memcpy(cmd_state->signature_buffer + SIGNATURE_LENGTH/2, signature_frame + 2*HASH_LENGTH, SIGNATURE_LENGTH/2);
 
 		// Compare the hash from the signature with the hash of the message.
 		// The hash from the signature is the plain text of the signature, decrypted with RSA using the public key.
 		char msg_sha256_hash_from_signature[HASH_LENGTH];
-		decrypt_rsa(state->signature_buffer, msg_sha256_hash_from_signature, lownet_public_key);
+		decrypt_rsa(cmd_state->signature_buffer, msg_sha256_hash_from_signature, lownet_public_key);
 
 		if (memcmp(msg_sha256_hash, msg_sha256_hash_from_signature, HASH_LENGTH)) {		// If hashes are different
 			serial_write_line(ERROR_SIGNATURE);
@@ -145,11 +147,11 @@ void process_command_frame(const command_payload_t* cmd) {
 			break;
 	}
 	
-	if (cmd->sequence <= state->sequence_number) {
+	if (cmd->sequence <= cmd_state->sequence_number) {
 		serial_write_line(ERROR_SEQUENCE);
 		return;
 	} else {
-		state->sequence_number = cmd->sequence;
+		cmd_state->sequence_number = cmd->sequence;
 	}
 }
 
@@ -158,20 +160,20 @@ void handle_command_frame(const lownet_frame_t* frame) {
 
 	uint8_t frame_type = frame->protocol >> 6;
 
-	if ( ( (state->listening_and_signature_verified & (1<<7)) == (STATE_LISTENING << 7) ) && ( (esp_timer_get_time() - state->start_time)/1000 >= SIGNATURE_MAX_DELAY) ) {		// Convert μs to ms.
-		state_init(state);
+	if ( ( (cmd_state->listening_and_signature_verified & (1<<7)) == (STATE_LISTENING << 7) ) && ( (esp_timer_get_time() - cmd_state->start_time)/1000 >= SIGNATURE_MAX_DELAY) ) {		// Convert μs to ms.
+		state_init(cmd_state);
 	}
 
-	switch (state->listening_and_signature_verified & (1<<7)) {
+	switch (cmd_state->listening_and_signature_verified & (1<<7)) {
 	case STATE_IDLE:
 		switch (frame_type) {
 		case LOWNET_FRAME_UNSIGNED:
 			return;		// Ignore non-signed frames.
 			break;
 		case LOWNET_FRAME_SIGNED:
-			memcpy(state->frame_buffer, frame, LOWNET_FRAME_SIZE);
-			set_nth_bit(&state->listening_and_signature_verified, 8, STATE_LISTENING);
-			state->start_time = esp_timer_get_time();
+			memcpy(cmd_state->frame_buffer, frame, LOWNET_FRAME_SIZE);
+			set_nth_bit(&cmd_state->listening_and_signature_verified, 8, STATE_LISTENING);
+			cmd_state->start_time = esp_timer_get_time();
 			break;
 		default:
 			return;		// Ignore signature frames if STATE_IDLE

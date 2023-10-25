@@ -28,6 +28,8 @@
 #define SIGNATURE_UNVERIFIED		0
 #define SIGNATURE_VERIFIED 			1
 
+#define ADDITIONNAL_PAYLOAD_PING_LENGTH 	COMMAND_DATA_LENGTH
+
 typedef struct __attribute__((__packed__)) {
 	uint64_t sequence;
 	uint8_t type;
