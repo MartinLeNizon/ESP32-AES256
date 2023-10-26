@@ -1,3 +1,5 @@
+#define DBG
+
 #include <time.h>
 #include <stdint.h>
 #include <string.h>
