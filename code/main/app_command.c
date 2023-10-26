@@ -1,5 +1,3 @@
-#define DBG
-
 #include <time.h>
 #include <stdint.h>
 #include <string.h>
@@ -24,16 +22,12 @@ const char* ERROR_SIGNATURE = "ERROR // WRONG SIGNATURE";
 // static uint8_t optionnal_payload_ping [ADDITIONNAL_PAYLOAD_PING_LENGTH];
 
 void cmd_process_time(const command_payload_t* cmd) {
-	// lownet_time_t time;
-	// memcpy(&time, cmd->data, sizeof(lownet_time_t));
-	// lownet_set_time(&time);
-	#ifdef DBG
-		serial_write_line("command_process_time");
-	#endif
+	lownet_time_t time;
+	memcpy(&time, cmd->data, sizeof(lownet_time_t));
+	lownet_set_time(&time);
 }
 
 void cmd_process_test(const command_payload_t* cmd){
-
 	#ifdef DBG
 		serial_write_line("command_process_test");
 	#endif

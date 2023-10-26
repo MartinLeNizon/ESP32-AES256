@@ -25,7 +25,6 @@ Error messages, especially in app_command.c:
 
 ----------------------------------------------------------------------------------------------------------*/
 
-#define DBG
 
 // CSTDLIB includes.
 #include <stdio.h>
