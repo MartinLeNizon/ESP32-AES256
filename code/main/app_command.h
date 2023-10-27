@@ -40,6 +40,4 @@ void process_command_frame(const lownet_frame_t* frame);
 
 void handle_command_frame(const lownet_frame_t* frame);
 
-void command_init();
-
 #endif

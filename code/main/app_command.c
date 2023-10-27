@@ -26,9 +26,6 @@ static int8_t bite2 = 1;
 static additionnal_ping_payload_t additionnal_ping_payload;
 
 void cmd_process_time(const lownet_frame_t* frame) {
-	#ifdef DBG
-		serial_write_line("command_process_time");
-	#endif
 	if (bite) {
 		bite = 0;
 		const command_payload_t* cmd = (const command_payload_t*) frame->payload;
@@ -39,9 +36,6 @@ void cmd_process_time(const lownet_frame_t* frame) {
 }
 
 void cmd_process_test(const lownet_frame_t* frame){
-	#ifdef DBG
-		serial_write_line("command_process_test");
-	#endif
 	if (bite2) {
 		bite2 = 0;
 		const command_payload_t* cmd = (const command_payload_t*) frame->payload;
@@ -80,8 +74,4 @@ void handle_command_frame(const lownet_frame_t* frame) {
 	default:
 		return;
 	}
-}
-
-void command_init() {
-	additionnal_ping_payload.length = 0;
 }
