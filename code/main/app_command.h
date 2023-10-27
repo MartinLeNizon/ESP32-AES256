@@ -3,8 +3,10 @@
 
 #include "lownet.h"
 
-#define COMMAND_RESERVED_LENGTH				3
-#define COMMAND_DATA_LENGTH					180
+#define COMMAND_SEQUENCE_SIZE				8
+#define COMMAND_TYPE_SIZE					1
+#define COMMAND_RESERVED_SIZE				3
+#define COMMAND_DATA_SIZE					180
 
 #define HASH_LENGTH							32
 
@@ -16,21 +18,28 @@
 #define LOWNET_FIRST_SIGNATURE				0b10
 #define LOWNET_SECOND_SIGNATURE				0b11
 
-#define ADDITIONNAL_PAYLOAD_PING_LENGTH 	COMMAND_DATA_LENGTH
+#define ADDITIONNAL_PAYLOAD_PING_SIZE 	COMMAND_DATA_SIZE
 
 typedef struct __attribute__((__packed__)) {
 	uint64_t sequence;
 	uint8_t type;
-	uint8_t undefined[COMMAND_RESERVED_LENGTH];
-	uint8_t data[COMMAND_DATA_LENGTH];
+	uint8_t undefined[COMMAND_RESERVED_SIZE];
+	uint8_t data[COMMAND_DATA_SIZE];
 } command_payload_t;
 
-void cmd_process_time(const command_payload_t* cmd);
+typedef struct __attribute__((__packed__)) {
+	uint8_t length;		// NEED TO INIT TO 0.
+	uint8_t data[ADDITIONNAL_PAYLOAD_PING_SIZE];
+} additionnal_ping_payload_t;
 
-void cmd_process_test(const command_payload_t* cmd);
+void cmd_process_time(const lownet_frame_t* frame);
 
-void process_command_frame(const command_payload_t* cmd);
+void cmd_process_test(const lownet_frame_t* frame);
+
+void process_command_frame(const lownet_frame_t* frame);
 
 void handle_command_frame(const lownet_frame_t* frame);
+
+void command_init();
 
 #endif

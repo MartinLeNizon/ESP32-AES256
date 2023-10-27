@@ -14,7 +14,6 @@ typedef struct __attribute__((__packed__))
 	uint8_t 		origin;
 } ping_packet_t;
 
-
 void ping(uint8_t node) {
 	lownet_frame_t frame;
 	memset(&frame, 0, sizeof(frame));
@@ -29,12 +28,36 @@ void ping(uint8_t node) {
 	pak.timestamp_out = lownet_get_time();
 	pak.origin = lownet_get_device_id();
 	memcpy(frame.payload, &pak, sizeof(pak));
-
 	lownet_send(&frame);
 
 	char buffer[MSG_BUFFER_LENGTH];
 	memset(buffer, 0, MSG_BUFFER_LENGTH);
 	sprintf(buffer, "<PING OUT : 0x%02X>", node);
+	serial_write_line(buffer);
+}
+
+void ping_additionnal_content(uint8_t node, additionnal_ping_payload_t* content) {
+	lownet_frame_t frame;
+	memset(&frame, 0, sizeof(frame));
+
+	frame.source = lownet_get_device_id();
+	frame.destination = node;
+	frame.protocol = LOWNET_PROTOCOL_PING;
+	frame.length = sizeof(ping_packet_t) + content->length;
+
+	ping_packet_t pak;
+	memset(&pak, 0, sizeof(pak));
+	pak.timestamp_out = lownet_get_time();
+	pak.origin = lownet_get_device_id();
+	memcpy(frame.payload, &pak, sizeof(pak));
+
+	memcpy(frame.payload + sizeof(pak), content->data, content->length);
+
+	lownet_send(&frame);
+
+	char buffer[MSG_BUFFER_LENGTH];
+	memset(buffer, 0, MSG_BUFFER_LENGTH);
+	sprintf(buffer, "<PING OUT WITH ADDITIONNAL CONTENT : 0x%02X>", node);
 	serial_write_line(buffer);
 }
 
@@ -47,9 +70,6 @@ void ping_receive(const lownet_frame_t* frame) {
 
 	ping_packet_t pak;
 	memcpy(&pak, frame->payload, sizeof(pak));
-
-	printf("frame length: %d\n", frame->length);
-	printf("ping packet size: %d\n", sizeof(pak));
 
 	if (pak.origin == lownet_get_device_id()) {
 		// This is a response to one of our pings.  Print a diagnostic.
