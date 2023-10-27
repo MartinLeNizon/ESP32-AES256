@@ -21,12 +21,20 @@ const char* ERROR_SIGNATURE_ORDER = "ERROR // SECOND PART OF THE SIGNATURE RECEI
 const char* ERROR_PARSE_KEY = "ERROR // PARSE KEY";
 const char* ERROR_SIGNATURE = "ERROR // WRONG SIGNATURE";
 
+static int8_t bite = 1;
+
 // static uint8_t optionnal_payload_ping [ADDITIONNAL_PAYLOAD_PING_LENGTH];
 
 void cmd_process_time(const command_payload_t* cmd) {
-	lownet_time_t time;
-	memcpy(&time, cmd->data, sizeof(lownet_time_t));
-	lownet_set_time(&time);
+	#ifdef DBG
+		serial_write_line("command_process_time");
+	#endif
+	if (bite) {
+		bite = 0;
+		lownet_time_t time;
+		memcpy(&time, cmd->data, sizeof(lownet_time_t));
+		lownet_set_time(&time);
+	}
 }
 
 void cmd_process_test(const command_payload_t* cmd){

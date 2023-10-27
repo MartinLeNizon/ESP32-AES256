@@ -24,7 +24,7 @@ Error messages, especially in app_command.c:
 	- When checking the signature of a non signature frame.
 
 ----------------------------------------------------------------------------------------------------------*/
-
+#define DBG
 
 // CSTDLIB includes.
 #include <stdio.h>
@@ -212,7 +212,7 @@ void try_test() {
 	        }
 	        printf("\n");
 		}
-	#endif DBG
+	#endif
 }
 
 // -------------------------------------------------------
