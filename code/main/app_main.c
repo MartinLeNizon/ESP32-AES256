@@ -1,3 +1,30 @@
+/* ----------------------------------------------
+Lim. 10 s for the 3 frames when signed
+-----------------------------------------------*/
+
+/* -------------------------------------------------- TO-DO -----------------------------------------------
+
+Set the timer of 10 seconds when receiving a signed frame.
+
+Check that a command is valid if:
+i) signature is valid.
+ii) no valid command with equal or higher sequence number has been received.
+
+Should the input be too short, it will be padded with zeroes. (2.7)
+
+Be able to handle signature before main frame:
+	- Idea: do a union, to store either the main frame or signature first.
+
+Be able to receive the second signature before the first one.
+
+Change magic numbers struct command buffer by "define"
+
+Error messages, especially in app_command.c:
+	- When calculating hashes.
+	- When checking the signature of a non signature frame.
+
+----------------------------------------------------------------------------------------------------------*/
+
 // CSTDLIB includes.
 #include <stdio.h>
 #include <string.h>
@@ -113,6 +140,70 @@ void two_way_test() {
 	}
 }
 
+// ------------------ TESTS ------------------------------
+
+void try_time() {
+	lownet_frame_t frame;
+	memset(&frame, 0, sizeof(frame));
+
+	frame.source = 0xF0;
+	frame.destination = lownet_get_device_id();
+	frame.protocol = LOWNET_PROTOCOL_COMMAND;
+	frame.protocol |= 0b01000000;
+	frame.length = 12 + sizeof(lownet_time_t);
+
+	memset(frame.payload + 8, 1, 1);	// Time command
+
+	lownet_time_t time;
+	memset(&time, 0, sizeof(time));
+	time.seconds = 123456;
+	time.parts = 18;
+
+	memcpy(frame.payload + 12, &time, sizeof(time));
+
+	app_frame_dispatch(&frame);
+
+	serial_write_line("<FAKE TIME PACKET SENT>");
+}
+
+void try_test() {
+	uint8_t nb_bytes_to_copy = 3;
+
+	lownet_frame_t frame;
+	memset(&frame, 0, sizeof(frame));
+
+	frame.source = 0xF0;
+	frame.destination = lownet_get_device_id();
+	frame.protocol = LOWNET_PROTOCOL_COMMAND;
+	frame.protocol |= 0b01000000;
+	frame.length = 12 + nb_bytes_to_copy;	// TO COMPLETE
+
+	memset(frame.payload + 8, 2, 1);		// Test command
+
+	int8_t byte_to_add_to_ping_payload = 42;
+
+	for (int i = 0; i < nb_bytes_to_copy; i++) {
+		memcpy(frame.payload + 12 + i, &byte_to_add_to_ping_payload, 1);
+	}
+
+	app_frame_dispatch(&frame);
+
+	serial_write_line("<FAKE TEST PACKET SENT>");
+
+	#ifdef DBG
+		char frame_string[LOWNET_FRAME_SIZE];
+		memcpy(frame_string, &frame, LOWNET_FRAME_SIZE);
+		for (int i = 0; i < LOWNET_FRAME_SIZE; i++) {
+	        for (int j = 7; j >= 0; j--) {
+	            printf("%d", (frame_string[i] >> j) & 1);
+	        }
+	        printf("\n");
+		}
+	#endif
+}
+
+// -------------------------------------------------------
+
 void app_main(void) {
 	char msg_in[MSG_BUFFER_LENGTH];
 	char msg_out[MSG_BUFFER_LENGTH];
@@ -188,6 +279,10 @@ void app_main(void) {
 				} else if (!strcmp(msg_in, "/dbg") && lownet_get_key() != NULL) {
 					// Tiny little debugging helper -- see two_way_test(..) implementation above.
 					two_way_test();
+				} else if (!strcmp(msg_in, "/try_time")) {
+					try_time();
+				} else if (!strcmp(msg_in, "/try_test")) {
+					try_test();
 				} else {
 					serial_write_line(ERROR_COMMAND);
 
