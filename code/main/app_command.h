@@ -24,7 +24,7 @@ typedef struct __attribute__((__packed__)) {
 	uint8_t type;
 	uint8_t undefined[CMD_RESERVED_SIZE];
 	uint8_t data[CMD_DATA_SIZE];
-} command_payload_t;
+} cmd_payload_t;
 
 typedef struct __attribute__((__packed__)) {
 	uint8_t		hash_key[CMD_HASH_SIZE];
@@ -33,9 +33,18 @@ typedef struct __attribute__((__packed__)) {
 } cmd_signature_t;
 
 typedef struct __attribute__((__packed__)) {
+	uint8_t nb_elements_initialized;	// 3 when everything is initialized. Set to 0 when a frame is processed.
+	lownet_frame_t frame;
+	cmd_signature_t first_signature;
+	cmd_signature_t second_signature;
+} cmd_buffer_t;
+
+typedef struct __attribute__((__packed__)) {
 	uint8_t length;
 	uint8_t data[CMD_DATA_SIZE];
 } additionnal_ping_payload_t;
+
+void cmd_init();
 
 void cmd_process_time(const lownet_frame_t* frame);
 

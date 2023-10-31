@@ -219,6 +219,9 @@ void app_main(void) {
 	
 	// Initialize the serial services.
 	init_serial_service();
+	
+	// Initialize the command services.
+	cmd_init();
 
 	// Initialize the LowNet services, pass in function pointers for encrypt and
 	//	decrypt functions (defined above, TO BE IMPLEMENTED BY STUDENTS).
