@@ -8,8 +8,8 @@
 #define CMD_RESERVED_SIZE				3
 #define CMD_DATA_SIZE					180
 
-#define CMD_HASH_SIZE 32
-#define CMD_BLOCK_SIZE 256
+#define CMD_HASH_SIZE 					32
+#define CMD_BLOCK_SIZE 					256
 
 #define CMD_TYPE_TIME					0x01
 #define CMD_TYPE_TEST					0x02
@@ -32,10 +32,10 @@
 #define set_second_signature_bit(stored_items) ((stored_items) |= (1 << CMD_BIT_POSITION_SND_SGT))
 
 typedef struct __attribute__((__packed__)) {
-	uint64_t sequence;
-	uint8_t type;
-	uint8_t undefined[CMD_RESERVED_SIZE];
-	uint8_t data[CMD_DATA_SIZE];
+	uint64_t 	sequence;
+	uint8_t 	type;
+	uint8_t 	undefined[CMD_RESERVED_SIZE];
+	uint8_t 	data[CMD_DATA_SIZE];
 } cmd_payload_t;
 
 typedef struct __attribute__((__packed__)) {
@@ -45,18 +45,24 @@ typedef struct __attribute__((__packed__)) {
 } cmd_signature_t;
 
 typedef struct __attribute__((__packed__)) {
-	uint8_t stored_items;	// xxxxxabc: x - unused; a - frame; b - first signature; c - second signature. 0 - usused; 1 - used; (See #define)
-	lownet_frame_t frame;
-	cmd_signature_t first_signature;
-	cmd_signature_t second_signature;
+	uint8_t 			stored_items;	// xxxxxabc: x - unused; a - frame; b - first signature; c - second signature. 0 - usused; 1 - used; (See #define)
+	lownet_frame_t 		frame;
+	cmd_signature_t 	first_signature;
+	cmd_signature_t 	second_signature;
 } cmd_buffer_t;
 
 typedef struct __attribute__((__packed__)) {
-	uint8_t length;
-	uint8_t data[CMD_DATA_SIZE];
+	uint8_t 	length;
+	uint8_t 	data[CMD_DATA_SIZE];
 } additionnal_ping_payload_t;
 
 void cmd_init();
+
+uint8_t key_hash_is_correct(const cmd_signature_t* signature);
+
+uint8_t msg_hash_is_correct(const lownet_frame_t* frame, const cmd_signature_t* signature);
+
+int encrypt_rsa(const unsigned char* rsa_input, unsigned char* rsa_output);
 
 uint8_t signature_is_correct(const lownet_frame_t* frame, const cmd_signature_t* first_signature, const cmd_signature_t* second_signature);
 
