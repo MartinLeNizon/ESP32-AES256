@@ -31,8 +31,11 @@ static additionnal_ping_payload_t additionnal_ping_payload;
 
 static cmd_buffer_t buffer;
 
+static uint8_t sequence_number;
+
 void cmd_init() {
 	memset(&buffer.stored_items, 0, sizeof(buffer.stored_items));
+	sequence_number = 0;
 }
 
 uint8_t key_hash_is_correct(const cmd_signature_t* signature) {
@@ -207,7 +210,9 @@ void handle_command_frame(const lownet_frame_t* frame) {
 	}
 
 	if ((get_frame_bit(buffer.stored_items) == 1) && (get_first_signature_bit(buffer.stored_items) == 1) && (get_second_signature_bit(buffer.stored_items) == 1)) {
-		if (signature_is_correct(&buffer.frame, &buffer.first_signature, &buffer.second_signature)) {
+		const cmd_payload_t* cmd = (const cmd_payload_t*) buffer.frame.payload;
+		if ((sequence_number == 0 || cmd->sequence > sequence_number) && signature_is_correct(&buffer.frame, &buffer.first_signature, &buffer.second_signature)) {
+			sequence_number = cmd->sequence;
 			// process_command_frame(&buffer.frame);
 			serial_write_line("Signature verified, should process the frame");
 			memset(&buffer.stored_items, 0, sizeof(buffer.stored_items));
