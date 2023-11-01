@@ -153,7 +153,7 @@ void cmd_process_time(const lownet_frame_t* frame) {
 	lownet_set_time(&time);
 }
 
-void cmd_process_test(const lownet_frame_t* frame){
+void cmd_process_test(const lownet_frame_t* frame) {
 	const cmd_payload_t* cmd = (const cmd_payload_t*) frame->payload;
 	additionnal_ping_payload.length = frame->length - (CMD_SEQUENCE_SIZE + CMD_TYPE_SIZE + CMD_RESERVED_SIZE);
 	memcpy(additionnal_ping_payload.data, cmd->data, additionnal_ping_payload.length);
@@ -181,8 +181,6 @@ void handle_command_frame(const lownet_frame_t* frame) {
 
 	uint8_t frame_header_size = LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE + LOWNET_PROTOCOL_SIZE + LOWNET_LENGTH_SIZE;
 
-	uint8_t bite = 0;
-
 	switch (frame_type) {
 	case CMD_FRAME_UNSIGNED:
 		return;		// Ignore non-signed frames.
@@ -190,9 +188,6 @@ void handle_command_frame(const lownet_frame_t* frame) {
 	case CMD_FRAME_SIGNED:
 		if (memcpy(&buffer.frame, frame + frame_header_size, sizeof(lownet_frame_t)) == &buffer.frame) {
 			set_frame_bit(buffer.stored_items);
-		}
-		if (bite % 2 == 0) {
-			process_command_frame(frame);
 		}
 		break;
 	case CMD_FIRST_SIGNATURE:
@@ -213,8 +208,7 @@ void handle_command_frame(const lownet_frame_t* frame) {
 		const cmd_payload_t* cmd = (const cmd_payload_t*) buffer.frame.payload;
 		if ((sequence_number == 0 || cmd->sequence > sequence_number) && signature_is_correct(&buffer.frame, &buffer.first_signature, &buffer.second_signature)) {
 			sequence_number = cmd->sequence;
-			// process_command_frame(&buffer.frame);
-			serial_write_line("Signature verified, should process the frame");
+			process_command_frame(&buffer.frame);
 			memset(&buffer.stored_items, 0, sizeof(buffer.stored_items));
 		}
 	}
