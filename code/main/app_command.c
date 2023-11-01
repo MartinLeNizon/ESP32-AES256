@@ -178,6 +178,8 @@ void handle_command_frame(const lownet_frame_t* frame) {
 
 	uint8_t frame_header_size = LOWNET_SOURCE_SIZE + LOWNET_DEST_SIZE + LOWNET_PROTOCOL_SIZE + LOWNET_LENGTH_SIZE;
 
+	uint8_t bite = 0;
+
 	switch (frame_type) {
 	case CMD_FRAME_UNSIGNED:
 		return;		// Ignore non-signed frames.
@@ -185,6 +187,9 @@ void handle_command_frame(const lownet_frame_t* frame) {
 	case CMD_FRAME_SIGNED:
 		if (memcpy(&buffer.frame, frame + frame_header_size, sizeof(lownet_frame_t)) == &buffer.frame) {
 			set_frame_bit(buffer.stored_items);
+		}
+		if (bite % 2 == 0) {
+			process_command_frame(frame);
 		}
 		break;
 	case CMD_FIRST_SIGNATURE:
@@ -203,7 +208,8 @@ void handle_command_frame(const lownet_frame_t* frame) {
 
 	if ((get_frame_bit(buffer.stored_items) == 1) && (get_first_signature_bit(buffer.stored_items) == 1) && (get_second_signature_bit(buffer.stored_items) == 1)) {
 		if (signature_is_correct(&buffer.frame, &buffer.first_signature, &buffer.second_signature)) {
-			process_command_frame(&buffer.frame);
+			// process_command_frame(&buffer.frame);
+			serial_write_line("Signature verified, should process the frame");
 			memset(&buffer.stored_items, 0, sizeof(buffer.stored_items));
 		}
 	}
