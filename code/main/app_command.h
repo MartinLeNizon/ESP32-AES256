@@ -19,6 +19,18 @@
 #define CMD_FIRST_SIGNATURE				0b10
 #define CMD_SECOND_SIGNATURE			0b11
 
+#define CMD_BIT_POSITION_FRAME			2
+#define CMD_BIT_POSITION_FST_SGT		1
+#define CMD_BIT_POSITION_SND_SGT		0
+
+#define get_frame_bit(stored_items) (((stored_items) & (1 << CMD_BIT_POSITION_FRAME)) >> CMD_BIT_POSITION_FRAME)
+#define get_first_signature_bit(stored_items) (((stored_items) & (1 << CMD_BIT_POSITION_FST_SGT)) >> CMD_BIT_POSITION_FST_SGT)
+#define get_second_signature_bit(stored_items) (((stored_items) & (1 << CMD_BIT_POSITION_SND_SGT)) >> CMD_BIT_POSITION_SND_SGT)
+
+#define set_frame_bit(stored_items) ((stored_items) |= (1 << CMD_BIT_POSITION_FRAME))
+#define set_first_signature_bit(stored_items) ((stored_items) |= (1 << CMD_BIT_POSITION_FST_SGT))
+#define set_second_signature_bit(stored_items) ((stored_items) |= (1 << CMD_BIT_POSITION_SND_SGT))
+
 typedef struct __attribute__((__packed__)) {
 	uint64_t sequence;
 	uint8_t type;
@@ -33,7 +45,7 @@ typedef struct __attribute__((__packed__)) {
 } cmd_signature_t;
 
 typedef struct __attribute__((__packed__)) {
-	uint8_t nb_elements_initialized;	// 3 when everything is initialized. Set to 0 when a frame is processed.
+	uint8_t stored_items;	// xxxxxabc: x - unused; a - frame; b - first signature; c - second signature. 0 - usused; 1 - used; (See #define)
 	lownet_frame_t frame;
 	cmd_signature_t first_signature;
 	cmd_signature_t second_signature;
@@ -45,6 +57,8 @@ typedef struct __attribute__((__packed__)) {
 } additionnal_ping_payload_t;
 
 void cmd_init();
+
+uint8_t signature_is_correct(const lownet_frame_t* frame, const cmd_signature_t* first_signature, const cmd_signature_t* second_signature);
 
 void cmd_process_time(const lownet_frame_t* frame);
 
